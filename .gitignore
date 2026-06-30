@@ -1,0 +1,28 @@
+# .gitignore
+data/
+vector_store/
+.env
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+*.claude
+
+# ===== 虚拟环境 =====
+.venv/
+venv/
+ENV/
+env/
+.conda/
+
+# ===== 日志 =====
+log/
+logs/
+*.log
+*.log.*
+
+# ===== 操作系统 =====
+.DS_Store
+Thumbs.db
+desktop.ini

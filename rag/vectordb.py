@@ -21,9 +21,7 @@ _store: Chroma | None = None
 
 
 def get_vector_store(embeddings: Embeddings | None = None) -> Chroma:
-    """
-    获取 Chroma 向量库单例（自动创建或加载已有集合）。
-    """
+    """获取 Chroma 向量库单例"""
     global _store
     if _store is not None:
         return _store
@@ -46,7 +44,7 @@ def get_vector_store(embeddings: Embeddings | None = None) -> Chroma:
 
 
 def reset_vector_store() -> None:
-    """重置单例（清空集合后需要调用）"""
+    """重置单例"""
     global _store
     _store = None
 
@@ -59,20 +57,14 @@ def add_documents(store: Chroma, documents: list[Document]) -> list[str]:
 
 
 def clear_collection(store: Chroma) -> None:
-    """清空集合中的所有文档"""
+    """清空集合"""
     store.delete_collection()
     reset_vector_store()
     logger.warning("集合 %s 已清空", config.CHROMA_COLLECTION_NAME)
 
 
 def get_existing_file_hashes(store: Chroma) -> dict[str, str]:
-    """
-    查询向量库中已有的文件及其哈希值。
-
-    通过 Chroma 的 metadata 去重查询实现：遍历所有文档，
-    按 source 分组，返回 {文件名: file_hash} 映射。
-    空集合返回 {}。
-    """
+    """返回 {文件名: file_hash} 映射"""
     try:
         results = store.get()
         if not results or not results["metadatas"]:
@@ -90,12 +82,7 @@ def get_existing_file_hashes(store: Chroma) -> dict[str, str]:
 
 
 def delete_by_source(store: Chroma, source: str) -> int:
-    """
-    删除指定来源文件的所有文档块。
-
-    使用 Chroma 的 metadata 过滤，先查后删。
-    返回删除的文档数量。
-    """
+    """删除指定来源的所有文档块"""
     results = store.get(where={"source": source})
     if not results or not results["ids"]:
         return 0

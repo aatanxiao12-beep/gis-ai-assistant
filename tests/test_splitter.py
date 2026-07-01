@@ -11,7 +11,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from rag.splitter import split_text, split_by_markdown
+from rag.loader import split_text
 
 
 # ============================================================
@@ -57,54 +57,6 @@ def test_split_text_english():
 
 
 # ============================================================
-# split_by_markdown — Markdown 标题分割
-# ============================================================
-
-SAMPLE_MD = """# 第一章 引言
-这里是引言的正文内容，介绍背景知识。
-
-## 1.1 研究动机
-为什么要研究这个话题。
-
-### 1.1.1 具体问题
-这个问题包含三个子问题。
-
-## 1.2 论文结构
-本文的组织结构如下。
-
-# 第二章 相关工作
-前人做了很多研究。"""
-
-
-def test_split_by_markdown_splits_on_headers():
-    """按 H1/H2/H3 标题将文档切成多块"""
-    chunks = split_by_markdown(SAMPLE_MD)
-    assert len(chunks) >= 4, f"期望至少4块，实际{len(chunks)}块"
-
-
-def test_split_by_markdown_contains_header_text():
-    """切分后的块包含原标题文本"""
-    chunks = split_by_markdown(SAMPLE_MD)
-    contents = [c.page_content for c in chunks]
-    assert any("研究动机" in c for c in contents)
-    assert any("相关工作" in c for c in contents)
-
-
-def test_split_by_markdown_empty_input():
-    """空文本返回空列表"""
-    chunks = split_by_markdown("")
-    assert chunks == []
-
-
-def test_split_by_markdown_no_headers():
-    """无标题文本返回单个块"""
-    text = "这是一段没有任何标题的纯文本。"
-    chunks = split_by_markdown(text)
-    assert len(chunks) == 1
-    assert "纯文本" in chunks[0].page_content
-
-
-# ============================================================
 # 直接运行
 # ============================================================
 if __name__ == "__main__":
@@ -113,10 +65,6 @@ if __name__ == "__main__":
         test_split_text_short,
         test_split_text_metadata_passed,
         test_split_text_english,
-        test_split_by_markdown_splits_on_headers,
-        test_split_by_markdown_contains_header_text,
-        test_split_by_markdown_empty_input,
-        test_split_by_markdown_no_headers,
     ]
     passed = 0
     for t in tests:

@@ -14,7 +14,7 @@ load_dotenv()
 # 嵌入模型（阿里百炼 DashScope）
 # ============================================================
 
-EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "text-embedding-v4")
+EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "text-embedding-v2")
 EMBEDDING_API_KEY = os.getenv("DASHSCOPE_API_KEY", os.getenv("DEEPSEEK_API_KEY", ""))
 
 # ============================================================

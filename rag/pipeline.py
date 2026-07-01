@@ -17,8 +17,7 @@ from rag import config
 from rag.loader import build_survey_knowledge_base, clear_md5_store
 from rag.embedding import get_embeddings
 from rag.vectordb import get_vector_store, add_documents, clear_collection
-from rag.retriever import retrieve
-from rag.reranker import rerank
+from rag.retriever import retrieve, rerank
 from utils.logger_handle import logger
 
 

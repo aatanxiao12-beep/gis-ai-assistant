@@ -43,7 +43,7 @@ MD5_HEX_STORE = "data/md5_processed.txt"           # 记录已处理文件的 MD
 # 检索
 # ============================================================
 
-RETRIEVAL_TOP_K = 3                               # 返回文档数
+RETRIEVAL_TOP_K = 10                              # 返回文档数
 RETRIEVAL_SEARCH_TYPE = "similarity_score_threshold"  # similarity / mmr / similarity_score_threshold
 RETRIEVAL_FETCH_K = 20                            # MMR 初选数
 RETRIEVAL_LAMBDA_MULT = 0.6                       # MMR 多样性 (0→多样, 1→相似)

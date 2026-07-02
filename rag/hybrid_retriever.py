@@ -81,7 +81,7 @@ class BM25Index:
         self._avg_dl = sum(self._doc_lengths) / n
 
     def search(self, query: str, top_k: int = 10) -> list[tuple[float, Document]]:
-        if not self._docs:
+        if not self._docs or self._avg_dl == 0.0:
             return []
 
         query_tokens = _tokenize(query)
@@ -93,6 +93,8 @@ class BM25Index:
         for i in range(n):
             tf = self._term_freqs[i]
             dl = self._doc_lengths[i]
+            if dl == 0:
+                continue
             score = 0.0
             for token in set(query_tokens):
                 df = self._doc_freq.get(token, 0)

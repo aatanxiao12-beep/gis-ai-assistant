@@ -7,6 +7,8 @@ ChromaDB 向量库
     add_documents(store, docs)
 """
 
+import threading
+
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -16,31 +18,37 @@ from rag.embedding import get_embeddings
 from utils.path_tool import get_abs_path
 from utils.logger_handle import logger
 
-# 单例缓存
+# 单例缓存 + 线程锁
 _store: Chroma | None = None
+_lock = threading.Lock()
 
 
 def get_vector_store(embeddings: Embeddings | None = None) -> Chroma:
-    """获取 Chroma 向量库单例"""
+    """获取 Chroma 向量库单例（线程安全）"""
     global _store
+
     if _store is not None:
         return _store
 
-    emb = embeddings or get_embeddings()
-    persist_dir = get_abs_path(config.CHROMA_PERSIST_DIR)
+    with _lock:
+        if _store is not None:
+            return _store
 
-    logger.info(
-        "加载 Chroma | collection=%s | path=%s | metric=%s",
-        config.CHROMA_COLLECTION_NAME, persist_dir, config.CHROMA_DISTANCE_METRIC,
-    )
+        emb = embeddings or get_embeddings()
+        persist_dir = get_abs_path(config.CHROMA_PERSIST_DIR)
 
-    _store = Chroma(
-        collection_name=config.CHROMA_COLLECTION_NAME,
-        embedding_function=emb,
-        persist_directory=persist_dir,
-        collection_metadata={"hnsw:space": config.CHROMA_DISTANCE_METRIC},
-    )
-    return _store
+        logger.info(
+            "加载 Chroma | collection=%s | path=%s | metric=%s",
+            config.CHROMA_COLLECTION_NAME, persist_dir, config.CHROMA_DISTANCE_METRIC,
+        )
+
+        _store = Chroma(
+            collection_name=config.CHROMA_COLLECTION_NAME,
+            embedding_function=emb,
+            persist_directory=persist_dir,
+            collection_metadata={"hnsw:space": config.CHROMA_DISTANCE_METRIC},
+        )
+        return _store
 
 
 def reset_vector_store() -> None:

@@ -8,7 +8,7 @@ RAG 管道
 用法:
     from rag.pipeline import build_kb, search
     build_kb()
-    result = search("三维空间中线与体的拓扑关系有哪些？")
+    result = search("？")
 """
 
 from langchain_core.documents import Document
@@ -17,7 +17,8 @@ from rag import config
 from rag.loader import build_survey_knowledge_base, clear_md5_store
 from rag.embedding import get_embeddings
 from rag.vectordb import get_vector_store, add_documents, clear_collection
-from rag.retriever import retrieve, rerank
+from rag.retriever import retrieve
+from rag.reranker import rerank
 from utils.logger_handle import logger
 
 

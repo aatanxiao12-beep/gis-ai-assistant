@@ -2,9 +2,8 @@
 检索模块
 
 用法:
-    from rag.retriever import retrieve, rerank
+    from rag.retriever import retrieve
     docs = retrieve(store, "三维空间拓扑关系有哪些？")
-    docs = rerank("query", docs)
 """
 
 from langchain_chroma import Chroma
@@ -12,16 +11,6 @@ from langchain_core.documents import Document
 
 from rag import config
 from utils.logger_handle import logger
-
-
-def rerank(query: str, documents: list[Document], top_n: int | None = None) -> list[Document]:
-    """对候选文档截断，返回 top_n 个"""
-    if not documents:
-        return []
-
-    n = top_n or config.RERANK_TOP_N
-    logger.debug("重排序: %d → %d", len(documents), min(n, len(documents)))
-    return documents[:n]
 
 
 def retrieve(

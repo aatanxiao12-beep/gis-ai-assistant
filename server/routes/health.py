@@ -1,0 +1,16 @@
+"""
+健康检查路由
+"""
+
+from fastapi import APIRouter
+
+router = APIRouter()
+
+
+@router.get("/health")
+async def health_check():
+    return {
+        "status": "ok",
+        "service": "GIS AI Standard Assistant",
+        "version": "1.0.0",
+    }

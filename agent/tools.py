@@ -17,16 +17,16 @@ def search_gis_standards(query: str) -> str:
     """
     搜索本地 GIS 标准知识库（OGC GML / ISO 19136 / XSD Schema）。
 
-    一次调用返回 top-5 最相关文档片段，已按混合检索（语义+关键词）排序。
+    一次调用返回 top-8 最相关文档片段，已按混合检索（语义+关键词）排序。
     结果包含完整的技术定义、代码示例和来源标注。
 
-    **调用一次即可**，除非结果完全不相关才需要换关键词重试。
+    **严格限制：整个对话中只能调用本工具一次。收到结果后必须直接回答，禁止再次调用。**
     """
     docs = hybrid(query, top_k=10)
     if not docs:
         return "未在知识库中找到相关内容。建议尝试其他关键词或调用 web_search。"
 
-    docs = docs[:5]
+    docs = docs[:8]
 
     summary = f"共检索到 {len(docs)} 个相关文档片段（已按相关度排序）:\n"
     parts: list[str] = [summary]
@@ -47,8 +47,8 @@ def search_gis_standards(query: str) -> str:
             label = src
 
         header = f"[{i + 1}] {label}  — {src}"
-        content = doc.page_content[:800]
-        if len(doc.page_content) > 800:
+        content = doc.page_content[:1200]
+        if len(doc.page_content) > 1200:
             content += "..."
         parts.append(f"{header}\n{content}")
 

@@ -34,32 +34,21 @@ SYSTEM_PROMPT = """\
 - ISO 19136 地理信息标准
 - GML 应用模式、几何原语、拓扑关系、坐标参照系、时间模型、覆盖数据
 
-## 工具使用原则
-1. GIS 标准/规范问题 → 调用 **search_gis_standards**，一次调用返回 5 个已排序的最佳结果
-2. 最新动态、工具库、网络资源 → 调用 **web_search**
-3. **严禁重复调用同一工具**：search_gis_standards 返回的结果已是最优，直接从中提取信息回答即可
-4. 只有当首次结果标题完全不相关时，换一个关键词重试，最多 1 次
+## 工具使用原则（必须严格遵守）
 
-## 检索结果使用
-检索结果通常包含多个来源，请充分利用：
-1. 引用最相关的 **2-3 个**不同来源，交叉验证信息完整性
-2. 不同来源有补充信息时，整合呈现，不要只取第一条
-3. 每个关键事实后面标注来源编号 `[1]`、`[2]` 等
-4. 如果某个来源包含代码块或 XML Schema，优先展示
+1. **首次检索即终止**：调用一次 search_gis_standards 后，无论返回什么结果，都必须基于现有结果直接给出回答。**绝对禁止**对同一问题或相似关键词重复调用 search_gis_standards。
 
-## 回答结构
-请按以下层次组织回答，确保结构完整：
+2. **结果不完美也要回答**：检索结果可能不100%覆盖问题，这是正常的。请基于最相关的片段尽力回答，并注明信息来源于哪些文档。不要因为"觉得不够"而再次检索。
 
-1. **核心定义** — 引用规范原文，给出准确的技术定义
-2. **关键属性** — 列出重要的属性、约束和类型
-3. **继承与关系** — 说明与其他类型/元素的继承、引用、组合关系
-4. **XML/XSD 示例** — 如有代码片段，用代码块展示
-5. **引用来源** — 末尾列出所有引用的来源文件
+3. **web_search 仅用于补充**：只有当问题涉及最新动态、开源工具（GDAL/QGIS/GeoServer）、网络资源等知识库不覆盖的内容时，才调用 web_search。对于标准规范类问题，search_gis_standards 一次即可。
 
-## 格式要求
-- 使用中文回答，专业术语保留英文原名
-- 每个章节标注编号（一、二、三…），结构必须覆盖完整，不可只写部分
+4. **极其重要：每次看到工具返回结果后，你的下一个动作必须是输出最终回答（不带 tool_calls），而不是继续调用工具。**
+
+## 回答要求
+- 基于检索结果回答，关键事实标注来源编号 `[1]`、`[2]`
+- 如有 XML/XSD 代码片段，优先展示
 - 来源标注格式: `[1] 07-036r1.pdf — 10.4.2 CurvePropertyType`
+- 使用中文回答，专业术语保留英文原名
 """
 
 # ============================================================
@@ -123,6 +112,15 @@ def create_agent():
     def should_continue(state: AgentState) -> str:
         last_msg = state["messages"][-1]
         if hasattr(last_msg, "tool_calls") and last_msg.tool_calls:
+            # 统计已执行完成的工具调用轮数（ToolMessage 数量即已执行的轮数）
+            completed_rounds = sum(
+                1 for m in state["messages"]
+                if getattr(m, "type", "") == "tool"
+            )
+            if completed_rounds >= 2:
+                # 已执行 2 轮工具，强制结束，避免死循环
+                logger.warning("已达到最大工具调用轮数 (2)，强制终止")
+                return "end"
             return "tools"
         return "end"
 
@@ -140,7 +138,7 @@ def create_agent():
     builder.add_edge("tools", "agent")
 
     agent = builder.compile()
-    agent = agent.with_config({"recursion_limit": 10})
+    agent = agent.with_config({"recursion_limit": 6})
     logger.info("GIS AI Standard Assistant 工作流已构建")
     return agent
 

@@ -2,10 +2,11 @@
 Agent 工具
 
 用法:
-    from agent.tools import search_gis_standards, web_search
+    from agent.tools import search_gis_standards, web_search, get_current_time
 """
 
 import os
+from datetime import datetime, timezone, timedelta
 
 from langchain.tools import tool
 
@@ -64,6 +65,9 @@ def web_search(query: str) -> str:
     技术博客、社区问答、知识库未覆盖的补充资料。
     """
     from tavily import TavilyClient
+    from utils.logger_handle import logger
+
+    logger.info("web_search 调用 | query=%s", query)
 
     client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY", ""))
     try:
@@ -82,14 +86,37 @@ def web_search(query: str) -> str:
     if answer:
         parts.append(f"[综合]\n{answer}")
 
-    for i, r in enumerate(result.get("results", [])):
+    results_list = result.get("results", [])
+    for i, r in enumerate(results_list):
         parts.append(
             f"[{i + 1}] {r.get('title', '')}\n"
             f"    URL: {r.get('url', '')}\n"
             f"    {r.get('content', '')}"
         )
 
-    return "\n\n".join(parts) if parts else "未找到相关结果。"
+    out = "\n\n".join(parts) if parts else "未找到相关结果。"
+    logger.info("web_search 结果 | answer=%s, results=%d, len=%d",
+                "yes" if answer else "no", len(results_list), len(out))
+    return out
 
 
-TOOLS = [search_gis_standards, web_search]
+@tool
+def get_current_time() -> str:
+    """
+    获取当前系统时间，返回日期、时间、时区信息。
+
+    用于回答需要明确当前时间/日期的场景，例如：
+    - "最新版本是什么"（需要知道当前年份来评估时效性）
+    - "最近有哪些更新"
+    - 任何涉及时间判断的问题
+    """
+    tz_beijing = timezone(timedelta(hours=8))
+    now = datetime.now(tz_beijing)
+    return (
+        f"当前时间: {now.strftime('%Y-%m-%d %H:%M:%S')} (UTC+8 北京时间)\n"
+        f"当前年份: {now.year}\n"
+        f"当前日期: {now.strftime('%Y年%m月%d日')}"
+    )
+
+
+TOOLS = [search_gis_standards, web_search, get_current_time]

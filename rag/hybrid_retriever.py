@@ -226,6 +226,7 @@ class HybridRetriever:
         )
         logger.debug("混合检索: dense=%d sparse=%d → fused=%d",
                       len(dense_results), len(sparse_results), len(fused))
+        logger.info("检索完成: 返回 %d 个文档", len(fused[:k]))
         return fused[:k]
 
 

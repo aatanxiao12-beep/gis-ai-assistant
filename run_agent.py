@@ -15,7 +15,7 @@ from agent.graph import run_agent_stream
 def run_question(agent, question: str):
     print(f"\n▶ {question}\n")
 
-    for event in run_agent_stream(agent, question):
+    for event in run_agent_stream(agent, [{"role": "user", "content": question}]):
         step = event["step"]
         msg_type = event["msg_type"]
 

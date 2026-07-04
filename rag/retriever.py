@@ -64,5 +64,5 @@ def retrieve(
     else:
         raise ValueError(f"不支持的检索类型: {stype}")
 
-    logger.info("检索完成: 返回 %d 个文档", len(docs))
+    # logger.info("检索完成: 返回 %d 个文档", len(docs))
     return docs

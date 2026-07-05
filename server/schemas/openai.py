@@ -28,6 +28,7 @@ class ChatCompletionRequest(BaseModel):
     frequency_penalty: float | None = None
     presence_penalty: float | None = None
     stop: list[str] | None = None
+    conversation_id: str | None = None     # 复用已有会话；为空则新建
 
 
 # ============================================================
@@ -58,6 +59,7 @@ class ChatCompletionResponse(BaseModel):
     model: str = "gis-assistant"
     choices: list[Choice] = []
     usage: Usage = Field(default_factory=Usage)
+    conversation_id: str | None = None
 
 
 # ============================================================
@@ -106,7 +108,8 @@ def _now() -> int:
     return int(time.time())
 
 
-def make_response(model: str, content: str) -> ChatCompletionResponse:
+def make_response(model: str, content: str,
+                  conversation_id: str | None = None) -> ChatCompletionResponse:
     return ChatCompletionResponse(
         id=make_chat_id(),
         created=_now(),
@@ -116,6 +119,7 @@ def make_response(model: str, content: str) -> ChatCompletionResponse:
             message=DeltaMessage(role="assistant", content=content),
             finish_reason="stop",
         )],
+        conversation_id=conversation_id,
     )
 
 

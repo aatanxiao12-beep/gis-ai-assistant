@@ -20,10 +20,14 @@ from server.routes import health, chat
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """启动时创建 agent，关闭时无需清理"""
+    """启动时初始化数据库 + 创建 agent，关闭时释放资源"""
+    from server.db.conf import init_db
+    await init_db()
     from agent import create_agent
     app.state.agent = create_agent()
     yield
+    from server.db.conf import async_engine
+    await async_engine.dispose()
 
 
 # ── 应用 ──────────────────────────────────────────────────

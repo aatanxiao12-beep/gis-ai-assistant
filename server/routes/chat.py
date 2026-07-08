@@ -8,7 +8,7 @@ OpenAI 兼容路由
 - DELETE /v1/conversations/{id} 删除对话
 """
 
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +23,7 @@ from server.schemas.openai import (
 )
 from server.db.conf import get_database
 from server.db import crud
+from server.auth.middleware import get_current_user, get_optional_user
 
 router = APIRouter()
 
@@ -32,7 +33,8 @@ router = APIRouter()
 # ============================================================
 
 async def _resolve_conversation(
-    db: AsyncSession, conversation_id: str | None, model: str
+    db: AsyncSession, conversation_id: str | None, model: str,
+    user_id: int | None = None,
 ) -> tuple[str, int]:
     """
     解析会话：有 conversation_id 且存在则复用，否则新建。
@@ -46,10 +48,19 @@ async def _resolve_conversation(
 
     conv = await crud.get_conversation(db, conversation_id)
     if conv:
+        # 所有权检查：不能复用其他用户的对话
+        owner_id = conv.get("user_id")
+        if owner_id is not None and owner_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found",
+            )
         return conv["id"], conv["message_count"]
 
-    # 新建对话，使用客户端提供的 ID
-    cid = await crud.create_conversation(db, conversation_id=conversation_id, model=model)
+    # 新建对话，使用客户端提供的 ID，关联当前用户
+    cid = await crud.create_conversation(
+        db, conversation_id=conversation_id, model=model, user_id=user_id,
+    )
     return cid, 0
 
 
@@ -120,17 +131,20 @@ async def chat_completions(
     request: ChatCompletionRequest,
     req: Request,
     db: AsyncSession = Depends(get_database),
+    current_user: dict | None = Depends(get_optional_user),
 ):
     """OpenAI 兼容聊天接口，自动持久化到 SQLite。
 
     请求体可携带 conversation_id 复用已有会话，避免重复存储历史消息。
+    登录用户自动关联会话，未登录用户为匿名访问。
     """
     agent = req.app.state.agent
     model = request.model or "gis-assistant"
+    user_id = current_user["id"] if current_user else None
 
     # 解析会话：有 conversation_id 则复用，否则新建
     conv_id, existing_count = await _resolve_conversation(
-        db, request.conversation_id, model
+        db, request.conversation_id, model, user_id=user_id,
     )
 
     # 无 conversation_id 的请求不持久化（如 NextChat 标题生成等）
@@ -290,9 +304,15 @@ async def list_conversations(
     limit: int = 20,
     offset: int = 0,
     db: AsyncSession = Depends(get_database),
+    current_user: dict | None = Depends(get_optional_user),
 ):
-    """对话列表，按更新时间倒序，支持分页"""
-    conversations = await crud.list_conversations(db, limit, offset)
+    """对话列表，按更新时间倒序，支持分页。登录用户只返回自己的对话。"""
+    if current_user:
+        conversations = await crud.list_conversations(
+            db, limit, offset, user_id=current_user["id"],
+        )
+    else:
+        conversations = await crud.list_anonymous_conversations(db, limit, offset)
     return {"object": "list", "data": conversations}
 
 
@@ -300,11 +320,18 @@ async def list_conversations(
 async def get_conversation(
     conversation_id: str,
     db: AsyncSession = Depends(get_database),
+    current_user: dict | None = Depends(get_optional_user),
 ):
-    """获取单个对话详情，包含全部消息"""
+    """获取单个对话详情，包含全部消息。用户只能查看自己的对话。"""
     conv = await crud.get_conversation(db, conversation_id)
     if not conv:
         return JSONResponse({"error": "conversation not found"}, status_code=404)
+
+    # 检查所有权：登录用户只能访问自己的对话
+    user_id = current_user["id"] if current_user else None
+    if conv.get("user_id") is not None and conv["user_id"] != user_id:
+        return JSONResponse({"error": "conversation not found"}, status_code=404)
+
     messages = await crud.get_messages(db, conversation_id)
     conv["messages"] = messages
     return conv
@@ -314,7 +341,17 @@ async def get_conversation(
 async def delete_conversation(
     conversation_id: str,
     db: AsyncSession = Depends(get_database),
+    current_user: dict | None = Depends(get_optional_user),
 ):
-    """删除对话及其所有消息"""
+    """删除对话及其所有消息。用户只能删除自己的对话。"""
+    conv = await crud.get_conversation(db, conversation_id)
+    if not conv:
+        return JSONResponse({"error": "conversation not found"}, status_code=404)
+
+    # 检查所有权
+    user_id = current_user["id"] if current_user else None
+    if conv.get("user_id") is not None and conv["user_id"] != user_id:
+        return JSONResponse({"error": "conversation not found"}, status_code=404)
+
     await crud.delete_conversation(db, conversation_id)
     return {"status": "ok"}

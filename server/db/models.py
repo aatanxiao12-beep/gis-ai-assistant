@@ -5,10 +5,50 @@ SQLAlchemy 2.0 ORM 模型
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Index, Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy import Boolean, Index, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from server.db.conf import Base
+
+
+class User(Base):
+    """用户表"""
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True, comment="用户ID"
+    )
+    username: Mapped[str] = mapped_column(
+        String(50), unique=True, nullable=False, comment="用户名"
+    )
+    hashed_password: Mapped[str] = mapped_column(
+        String(200), nullable=False, comment="bcrypt 哈希密码"
+    )
+    email: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True, comment="邮箱"
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, comment="是否激活"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, comment="注册时间"
+    )
+
+    conversations: Mapped[list["Conversation"]] = relationship(
+        "Conversation", back_populates="user"
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "username": self.username,
+            "email": self.email,
+            "is_active": self.is_active,
+            "created_at": _fmt(self.created_at),
+        }
+
+    def __repr__(self) -> str:
+        return f"<User(id={self.id}, username={self.username!r})>"
 
 
 class Conversation(Base):
@@ -27,6 +67,9 @@ class Conversation(Base):
     message_count: Mapped[int] = mapped_column(
         Integer, default=0, comment="消息计数"
     )
+    user_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True, comment="所属用户ID（空为匿名）"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, comment="创建时间"
     )
@@ -40,6 +83,9 @@ class Conversation(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    user: Mapped[Optional["User"]] = relationship(
+        "User", back_populates="conversations"
+    )
 
     def to_dict(self) -> dict:
         return {
@@ -47,6 +93,7 @@ class Conversation(Base):
             "title": self.title,
             "model": self.model,
             "message_count": self.message_count,
+            "user_id": self.user_id,
             "created_at": _fmt(self.created_at),
             "updated_at": _fmt(self.updated_at),
         }

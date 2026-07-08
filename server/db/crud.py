@@ -7,60 +7,10 @@
 import json
 import uuid
 
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from server.db.models import Conversation, Message, User
-
-
-# ============================================================
-# User
-# ============================================================
-
-async def create_user(
-    db: AsyncSession,
-    username: str,
-    hashed_password: str,
-    email: str | None = None,
-) -> dict:
-    """创建用户，返回用户字典"""
-    user = User(
-        username=username,
-        hashed_password=hashed_password,
-        email=email,
-    )
-    db.add(user)
-    await db.flush()
-    return user.to_dict()
-
-
-async def get_user_by_username(
-    db: AsyncSession, username: str
-) -> dict | None:
-    """按用户名查找用户（不含密码哈希，用于 API 返回）"""
-    result = await db.execute(
-        select(User).filter(User.username == username)
-    )
-    user = result.scalar_one_or_none()
-    return user.to_dict() if user else None
-
-
-async def get_user_by_username_with_password(
-    db: AsyncSession, username: str
-) -> User | None:
-    """按用户名查找用户（含密码哈希，仅用于登录验证）"""
-    result = await db.execute(
-        select(User).filter(User.username == username)
-    )
-    return result.scalar_one_or_none()
-
-
-async def get_user_by_id(
-    db: AsyncSession, user_id: int
-) -> dict | None:
-    """按 ID 查找用户"""
-    user = await db.get(User, user_id)
-    return user.to_dict() if user else None
+from server.db.models import Conversation, Message
 
 
 # ============================================================
@@ -72,11 +22,10 @@ async def create_conversation(
     conversation_id: str = "",
     model: str = "gis-assistant",
     title: str = "",
-    user_id: int | None = None,
 ) -> str:
     """创建对话，返回 conversation_id"""
     cid = conversation_id or uuid.uuid4().hex[:16]
-    conv = Conversation(id=cid, title=title, model=model, user_id=user_id)
+    conv = Conversation(id=cid, title=title, model=model)
     db.add(conv)
     await db.flush()
     return cid
@@ -91,34 +40,15 @@ async def get_conversation(
 
 
 async def list_conversations(
-    db: AsyncSession,
-    limit: int = 20,
-    offset: int = 0,
-    user_id: int | None = None,
+    db: AsyncSession, limit: int = 20, offset: int = 0
 ) -> list[dict]:
-    """分页获取对话列表（按更新时间倒序），可按用户过滤"""
-    stmt = select(Conversation).order_by(desc(Conversation.updated_at))
-    if user_id is not None:
-        stmt = stmt.filter(Conversation.user_id == user_id)
-    stmt = stmt.offset(offset).limit(limit)
-    result = await db.execute(stmt)
-    return [r.to_dict() for r in result.scalars().all()]
-
-
-async def list_anonymous_conversations(
-    db: AsyncSession,
-    limit: int = 20,
-    offset: int = 0,
-) -> list[dict]:
-    """分页获取匿名对话（user_id IS NULL），按更新时间倒序"""
-    stmt = (
+    """分页获取对话列表（按更新时间倒序）"""
+    result = await db.execute(
         select(Conversation)
-        .filter(Conversation.user_id.is_(None))
         .order_by(desc(Conversation.updated_at))
         .offset(offset)
         .limit(limit)
     )
-    result = await db.execute(stmt)
     return [r.to_dict() for r in result.scalars().all()]
 
 

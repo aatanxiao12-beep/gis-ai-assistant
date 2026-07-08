@@ -6,7 +6,6 @@ FastAPI 应用入口
     python run_server.py
 """
 
-import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -15,21 +14,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from server.config import CORS_ORIGINS
 from server.routes import health, chat
-from server.auth import routes as auth_routes
-
-# ── 日志配置 ──────────────────────────────────────────────
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-# 静默一些过于详细的第三方日志
-logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
-logging.getLogger("aiosqlite").setLevel(logging.WARNING)
-logging.getLogger("watchfiles").setLevel(logging.WARNING)
 
 
 # ── 生命周期 ──────────────────────────────────────────────
@@ -64,7 +48,6 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(chat.router)
-app.include_router(auth_routes.router)
 
 
 # ── 启动入口 ──────────────────────────────────────────────
